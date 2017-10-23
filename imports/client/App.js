@@ -1,12 +1,13 @@
 import React, { Component } from 'react';
 import { createContainer } from 'meteor/react-meteor-data';
-import { LoginButtons } from 'meteor/okgrow:accounts-ui-react';
-
+import { autobind } from 'core-decorators';
 
 import Item from './Item';
+import IsRole from './utilities/IsRole';
 
 import Items from '../api/Items';
 
+@autobind
 class App extends Component {
   addItems(event) {
     event.preventDefault();
@@ -28,7 +29,6 @@ class App extends Component {
     } else {
       Session.set('showAll', true);
     }
-
   }
 
   render() {
@@ -37,16 +37,13 @@ class App extends Component {
     }
 
     return (
-      <div>
-        <header>
-          <h1>Level Up Voting</h1>
-          <LoginButtons />
-          <button onClick={this.showAll.bind(this)}>
-            Show {this.props.showAll ? 'One' : 'All'}
-          </button>
-        </header>
         <main>
-          <form className='new-items' onSubmit={this.addItems.bind(this)}>
+          <IsRole role='admin' { ... this.props}>
+            <button onClick={this.showAll}>
+              Show {this.props.showAll ? 'One' : 'All'}
+            </button>
+          </IsRole>
+          <form className='new-items' onSubmit={this.addItems}>
             <input type='text' ref='itemOne' />
             <input type='text' ref='itemTwo'/>
             <button type='submit'>Add Items</button>
@@ -55,21 +52,29 @@ class App extends Component {
             return <Item item={item} key={item._id}/>
           })}
         </main>
-      </div>
     );
   }
 }
 
-
-export default createContainer(() => {
+export default createContainer((props) => {
   let itemsSub = Meteor.subscribe('allItems');
+  let userSub = Meteor.subscribe('currentUser');
   let showAll = Session.get('showAll');
-  return {
-    showAll,
-    ready: itemsSub.ready(),
-    items: Items.find({}, {
+  let itemsArray;
+  let params = props.match.params;
+  if (params.id) {
+    console.log('------> on specific ID');
+    itemsArray = Items.find({_id: params.id}).fetch();
+  } else {
+    console.log('------> bringing the whole list');
+    itemsArray = Items.find({}, {
       limit: showAll ? 50 : 1,
       sort: { lastUpdated: 1 }
-    }).fetch()
+    }).fetch();
+  }
+  return {
+    showAll,
+    ready: itemsSub.ready() && userSub.ready(),
+    items: itemsArray
   }
 }, App);

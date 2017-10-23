@@ -1,6 +1,25 @@
 import { Mongo } from 'meteor/mongo';
+import SimpleSchema from 'simpl-schema';
 
 const Items = new Mongo.Collection('items');
+
+const ItemSchema = new SimpleSchema({
+  text: String,
+  value: SimpleSchema.Integer,
+});
+
+Items.schema = new SimpleSchema({
+  itemOne: ItemSchema,
+  itemTwo: ItemSchema,
+  lastUpdated: {
+    type: Date,
+    optional: true,
+  }
+});
+
+Items.attachSchema(Items.schema);
+
+
 
 if (Meteor.isServer) {
 
@@ -14,8 +33,6 @@ if (Meteor.isServer) {
 
   Meteor.methods({
     insertNewItem(itemOne, itemTwo) {
-      check(itemOne, String);
-      check(itemTwo, String);
       Items.insert({
         itemOne: {
           text: itemOne,
@@ -26,6 +43,7 @@ if (Meteor.isServer) {
           value: 0,
         }
       });
+      Roles.addUsersToRoles(Meteor.userId(),'submitter');
     },
 
     voteOnItem(item, position) {
@@ -52,6 +70,7 @@ if (Meteor.isServer) {
           })
         }
       }
+      Roles.addUsersToRoles(Meteor.userId(),'voter');
     }
   });
 }
